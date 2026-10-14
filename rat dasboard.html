@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard RAT KDKMP Kabupaten Lahat</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>tailwind.config={darkMode:'class'}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1ee;--c:#fff;--b:#d5dcd6;--t:#1d2a27;--m:#5d6c67;--a:#2f6f5e}
+.dark{--bg:#121a18;--c:#1a2523;--b:#2d3b38;--t:#e6eeea;--m:#93a39d;--a:#5fb59c}
+body{background:var(--bg);color:var(--t);font-family:'Public Sans',system-ui,sans-serif}
+h1,h2,.num{font-family:'Source Serif 4',Georgia,serif}
+.card{background:var(--c);border:1px solid var(--b);border-radius:8px}
+.inp{background:var(--c);border:1px solid var(--b);border-radius:6px;padding:.35rem .5rem;font-size:.85rem;color:var(--t);width:100%}
+.btn{border:1px solid var(--b);background:var(--c);color:var(--t);border-radius:6px;padding:.35rem .8rem;font-size:.85rem;cursor:pointer}
+.btn:hover,.inp:focus{border-color:var(--a);outline:none}
+.btn:focus-visible{outline:2px solid var(--a)}
+.pri{background:var(--a);color:#fff;border-color:var(--a)}
+.lab{font-size:.75rem;color:var(--m);display:block;margin-bottom:.15rem}
+th{cursor:pointer;white-space:nowrap;border-bottom:2px solid var(--b)}
+td{border-bottom:1px solid var(--b)}
+@media print{.np{display:none!important}body{background:#fff;color:#000}.card{break-inside:avoid}}
+</style>
+</head>
+<body class="min-h-screen">
+<div class="max-w-7xl mx-auto p-4 md:p-6">
+
+<header class="flex flex-wrap items-end justify-between gap-3 mb-5">
+  <div>
+    <h1 class="text-3xl font-bold">Rapat Anggota Tahunan KDKMP, Kabupaten Lahat</h1>
+    <p id="sum" class="text-sm mt-1" style="color:var(--m)"></p>
+  </div>
+  <div class="flex gap-2 np">
+    <button id="theme" class="btn">Mode gelap</button>
+    <button id="csv" class="btn">Export Data Filtered (CSV)</button>
+    <button id="prt" class="btn">Cetak / Simpan PDF</button>
+  </div>
+</header>
+
+<section class="card p-4 mb-4 np">
+  <div class="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+    <div><label class="lab" for="dim">Dimensi perbandingan</label><select id="dim" class="inp"><option value="kec">Kecamatan</option><option value="ba">BA</option></select></div>
+    <div><label class="lab" for="n">Jumlah parameter</label><select id="n" class="inp"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></div>
+    <div><label class="lab" for="sort">Urutkan berdasarkan</label><select id="sort" class="inp"></select></div>
+    <div><label class="lab" for="dir">Arah urutan</label><select id="dir" class="inp"><option value="-1">Tertinggi dulu</option><option value="1">Terendah dulu</option></select></div>
+    <div><label class="lab" for="top">Tampilkan</label><select id="top" class="inp"><option value="0">Semua</option><option value="5">5 teratas</option><option value="10">10 teratas</option><option value="15">15 teratas</option></select></div>
+    <div><label class="lab" for="ct">Tipe grafik</label><select id="ct" class="inp"><option value="bar">Batang vertikal</option><option value="h">Batang horizontal</option><option value="l">Garis</option></select></div>
+  </div>
+  <div id="slots" class="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mt-3"></div>
+  <div class="flex flex-wrap gap-4 mt-3 items-end">
+    <div style="width:220px"><label class="lab" for="q">Cari nama</label><input id="q" class="inp" placeholder="mis. Kikim, Ica"></div>
+    <label class="text-sm flex items-center gap-2 pb-1"><input type="checkbox" id="prob"> Hanya yang masih ada KDKMP belum final</label>
+    <button id="ai" class="btn pri">Pakai rekomendasi AI</button>
+  </div>
+</section>
+
+<section id="kpis" class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-4"></section>
+
+<section class="grid gap-4 lg:grid-cols-3 mb-4">
+  <div class="card p-4 lg:col-span-2"><h2 class="text-lg mb-2">Perbandingan parameter</h2><div id="c1w" style="height:380px"><canvas id="c1"></canvas></div></div>
+  <div class="card p-4"><h2 class="text-lg mb-2">Komposisi status RAT</h2><div style="height:380px"><canvas id="c2"></canvas></div></div>
+</section>
+
+<section id="cardsWrap" class="mb-4">
+  <h2 class="text-lg mb-2">Perbandingan berdampingan <span class="text-xs font-normal" style="color:var(--m)">(12 teratas sesuai urutan)</span></h2>
+  <div id="cards" class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"></div>
+</section>
+
+<section class="card p-4 mb-4">
+  <div class="flex justify-between items-center gap-2 flex-wrap">
+    <h2 class="text-xl">Executive Insight &amp; Narasi Analisis</h2>
+    <button id="tgl" class="btn np">Toggle Panel Editor / Edit Insight</button>
+  </div>
+  <div id="cus" class="hidden text-xs mt-1" style="color:var(--m)">Narasi kustom aktif. Mengubah parameter tidak menimpa teks ini; klik Reset untuk memuat draf AI terbaru.</div>
+  <div id="narr" class="mt-3 text-sm leading-relaxed whitespace-pre-line" style="max-width:85ch"></div>
+  <div id="nv" class="hidden mt-3 p-3 text-sm rounded whitespace-pre-line" style="border:1px dashed var(--b)"></div>
+  <div id="edp" class="hidden np mt-4 grid gap-3">
+    <div><label class="lab" for="ta">Narasi analisis (edit langsung)</label><textarea id="ta" rows="14" class="inp"></textarea></div>
+    <div><label class="lab" for="notes">Catatan kustom</label><textarea id="notes" rows="3" class="inp" placeholder="Tambahkan catatan atau argumen Anda sendiri"></textarea></div>
+    <div class="flex gap-2"><button id="apply" class="btn pri">Apply / Update Text</button><button id="rst" class="btn">Reset ke draf AI</button></div>
+  </div>
+</section>
+
+<section class="card p-4 mb-4">
+  <h2 class="text-lg mb-2">Tabel rincian <span class="text-xs font-normal" style="color:var(--m)">(klik judul kolom untuk mengurutkan)</span></h2>
+  <div class="overflow-x-auto"><table class="w-full text-sm"><thead id="th"></thead><tbody id="tb"></tbody><tfoot id="tf"></tfoot></table></div>
+</section>
+
+<footer class="text-xs pb-6" style="color:var(--m)">Sumber: Data RAT KDKMP Lahat 2025 (377 KDKMP; sheet Dashboard dan Pivot Table). Persentase dihitung terhadap jumlah KDKMP pada tiap baris. Status mengikuti Simkopdes: Belum RAT, Drafted, Rejected, Verified.</footer>
+</div>
+
+<script>
+const KEC=[["GUMAY TALANG",15,2,1,0,12,1],["GUMAY ULU",10,0,0,0,10,0],["JARAI",21,6,1,0,14,0],["KIKIM BARAT",19,10,3,6,0,0],["KIKIM SELATAN",18,6,7,5,0,0],["KIKIM TENGAH",9,2,6,1,0,0],["KIKIM TIMUR",32,5,4,2,21,1],["KOTA AGUNG",22,5,2,1,14,0],["LAHAT",29,0,0,0,29,6],["LAHAT SELATAN",10,0,0,0,10,0],["MERAPI BARAT",19,4,3,1,11,0],["MERAPI SELATAN",9,0,2,0,7,0],["MERAPI TIMUR",14,2,3,0,9,0],["MUARAPAYANG",7,0,0,0,7,0],["MULAK SEBINGKAI",10,0,0,0,10,0],["MULAK ULU",16,1,0,3,12,0],["PAGAR GUNUNG",20,0,6,5,9,0],["PAJAR BULAN",20,4,0,0,16,0],["PSEKSU",11,2,4,0,5,0],["PULAU PINANG",10,0,0,1,9,2],["SUKAMERINDU",10,2,2,2,4,0],["TANJUNG SAKTI PUMI",18,6,3,0,9,0],["TANJUNGSAKTI PUMU",14,6,0,0,8,0],["TANJUNGTEBAT",14,0,0,0,14,0]];
+const BA=[["AGUNG LAMONGGA",11,0,2,0,9,0],["APRIANI",11,0,0,0,11,0],["ARI OKTA ISWARA",9,0,0,0,9,0],["ARI WIHARSONO",10,8,1,0,1,0],["ARIE SANJAYA",10,0,5,5,0,0],["BUDI SULISTIYANI",10,0,0,0,10,1],["EKEMALSYAH",10,0,0,0,10,0],["ELSA NABILA IMTIYAZI",11,0,0,0,11,0],["ERTHA WULANDARI",10,0,0,0,10,0],["EUIS RAHMADONA",10,0,0,0,10,0],["FINU RHAMADAN SAPUTRA",9,5,1,3,0,0],["HERU SETIAWAN",9,4,3,2,0,0],["ICA PUTRI PURNAMA SARI",10,0,0,1,9,7],["IPI MAGRANG CAWANG",10,5,5,0,0,0],["IRFANTO",9,0,0,0,9,0],["JAMHARI ASAN",9,5,1,3,0,0],["LUSI APRIANI A.",10,0,1,0,9,0],["M. I. ARIO KIMAS",10,9,1,0,0,0],["M. SYAFRAN ARISEPTA",9,6,2,1,0,0],["MARWAN NOPRIANSYAH",10,2,0,0,8,0],["MOHAMMAD WILDAN FIRDAUS",9,0,0,0,9,0],["MUHAIMIN ADIYOSO",9,0,8,1,0,0],["NADYA ASHAKINA",10,1,1,0,8,0],["NITA HANDAYANI",10,3,4,0,3,0],["NURLIZA",10,0,0,1,9,0],["OTI MELIYAWATI",10,1,0,2,7,1],["RAHMAD FADLY",11,3,4,4,0,0],["RR. DEWI EFRIANA HARIYANTO",10,0,0,0,10,0],["SELA YULIA SARI",11,2,3,0,6,0],["SELLA NURUL FADILA",11,0,0,0,11,0],["SENSIANI",10,0,3,0,7,0],["SILPRIDO",11,3,0,0,8,0],["SITTY SEFTIANI",10,0,0,0,10,0],["TUNGKI ARI BOWO",10,0,0,0,10,1],["UTARI MAYA SARI",9,2,1,0,6,0],["WIRA PUSPITA SARI",11,0,0,0,11,0],["YENNI PUTRIYANA",9,0,0,0,9,0],["YOGI ARWANSI",9,4,1,4,0,0]];
+const rows0=a=>a.map(x=>({n:x[0],t:x[1],b:x[2],d:x[3],r:x[4],v:x[5],h:x[6]}));
+const DATA={kec:rows0(KEC),ba:rows0(BA)}, DIMN={kec:'kecamatan',ba:'BA'}, DIML={kec:'Kecamatan',ba:'BA'};
+const MET={
+ t:{l:'Jumlah KDKMP',n:r=>r.t}, s:{l:'Sudah RAT (submit)',n:r=>r.t-r.b}, v:{l:'Terverifikasi',n:r=>r.v},
+ b:{l:'Belum RAT',n:r=>r.b}, d:{l:'Draft (belum selesai submit)',n:r=>r.d}, r:{l:'Ditolak (rejected)',n:r=>r.r},
+ h:{l:'Hardcopy terkumpul',n:r=>r.h}, hb:{l:'Hardcopy belum terkumpul',n:r=>r.t-r.h},
+ pv:{l:'% Terverifikasi',n:r=>r.v,p:1}, ps:{l:'% Sudah RAT',n:r=>r.t-r.b,p:1}, pb:{l:'% Belum RAT',n:r=>r.b,p:1},
+ pf:{l:'% Perlu perbaikan (draft + ditolak)',n:r=>r.d+r.r,p:1}, ph:{l:'% Hardcopy terkumpul',n:r=>r.h,p:1}};
+const COL=['#2f6f5e','#d9902f','#b24a3a','#3b6ea5','#7a5ea8','#6b7a75'], ST=['#7d8a86','#d9902f','#b24a3a','#2f6f5e'];
+const $=id=>document.getElementById(id);
+const val=(rs,k)=>{const m=MET[k],a=rs.reduce((x,r)=>x+m.n(r),0);if(!m.p)return a;const T=rs.reduce((x,r)=>x+r.t,0);return T?a/T*100:0};
+const fmt=(k,v)=>MET[k].p?v.toFixed(1)+'%':Math.round(v).toLocaleString('id-ID');
+const pear=(x,y)=>{const n=x.length;if(n<3)return null;const mx=x.reduce((a,b)=>a+b)/n,my=y.reduce((a,b)=>a+b)/n;let a=0,b=0,c=0;for(let i=0;i<n;i++){a+=(x[i]-mx)*(y[i]-my);b+=(x[i]-mx)**2;c+=(y[i]-my)**2}return b&&c?a/Math.sqrt(b*c):null};
+const S={dim:'kec',n:4,p:['pv','pb','pf','ph','v','h'],sort:'pv',dir:-1,top:0,ct:'bar',q:'',prob:false,custom:null,notes:''};
+let C1,C2,lastAuto='';
+const act=()=>S.p.slice(0,S.n);
+
+function getRows(){
+  let rs=DATA[S.dim].filter(r=>r.n.toLowerCase().includes(S.q.toLowerCase())&&(!S.prob||r.b+r.d+r.r>0));
+  rs.sort((a,b)=>{const c=S.sort==='n'?a.n.localeCompare(b.n):val([a],S.sort)-val([b],S.sort);return (c*S.dir)||a.n.localeCompare(b.n)});
+  return S.top>0?rs.slice(0,S.top):rs;
+}
+
+function gen(rows,A){
+  if(!rows.length)return 'Tidak ada data pada filter saat ini.';
+  const g=k=>val(rows,k),f=fmt,ent=DIMN[S.dim];
+  const L=['Ringkasan',`Cakupan ${rows.length} ${ent} dengan ${f('t',g('t'))} KDKMP: ${f('v',g('v'))} terverifikasi (${f('pv',g('pv'))}), ${f('b',g('b'))} belum RAT (${f('pb',g('pb'))}), ${f('d',g('d'))} masih draft dan ${f('r',g('r'))} ditolak. Hardcopy yang terkumpul di dinas baru ${f('h',g('h'))} dokumen (${f('ph',g('ph'))}).`,'','Perbandingan parameter terpilih'];
+  A.forEach(k=>{const s=[...rows].sort((a,b)=>val([b],k)-val([a],k)),hi=s[0],lo=s[s.length-1];L.push(`• ${MET[k].l}: agregat ${f(k,g(k))}; tertinggi ${hi.n} (${f(k,val([hi],k))}), terendah ${lo.n} (${f(k,val([lo],k))}).`)});
+  if(A.length>1){const c=pear(rows.map(r=>val([r],A[0])),rows.map(r=>val([r],A[1])));if(c!==null){const a=Math.abs(c);L.push(`• Korelasi ${MET[A[0]].l} dengan ${MET[A[1]].l}: r = ${c.toFixed(2)} (${a>.7?'kuat':a>.4?'sedang':'lemah'}, ${c>=0?'searah':'berlawanan arah'}).`)}}
+  L.push('','Anomali dan temuan');
+  const z=rows.filter(r=>r.v===0&&r.t>0),full=rows.filter(r=>r.v===r.t),fnh=full.filter(r=>r.h===0);
+  if(z.length)L.push(`• ${z.length} ${ent} belum punya satu pun RAT terverifikasi: ${z.slice(0,6).map(r=>r.n).join(', ')}${z.length>6?', dan lainnya.':'.'}`);
+  if(full.length)L.push(`• ${full.length} ${ent} sudah 100% terverifikasi, tetapi ${fnh.length} di antaranya belum menyerahkan hardcopy sama sekali. Verifikasi digital belum berarti arsip fisik lengkap.`);
+  const k0=A[0],xs=rows.map(r=>val([r],k0)),mu=xs.reduce((a,b)=>a+b,0)/xs.length,sd=Math.sqrt(xs.reduce((a,b)=>a+(b-mu)**2,0)/xs.length);
+  if(sd>0){const o=rows.filter((r,i)=>Math.abs(xs[i]-mu)/sd>2);if(o.length)L.push(`• Outlier statistik (|z| > 2) pada ${MET[k0].l}: ${o.map(r=>r.n+' ('+f(k0,val([r],k0))+')').join(', ')}.`)}
+  const pr=[...rows].sort((a,b)=>(b.b+b.d+b.r)-(a.b+a.d+a.r)).slice(0,3);
+  L.push('','Rekomendasi','• Prioritaskan pendampingan: '+pr.map(r=>`${r.n} (${r.b+r.d+r.r} KDKMP belum final)`).join('; ')+'.','• Selesaikan draft dan perbaiki RAT yang ditolak lebih dulu; RAT yang sudah terlaksana umumnya lebih cepat difinalkan daripada RAT baru.','• Jadwalkan penyerahan hardcopy secara kolektif per kecamatan.');
+  return L.join('\n');
+}
+
+function kpis(rows,A){
+  $('kpis').innerHTML=A.map((k,i)=>{const s=[...rows].sort((a,b)=>val([b],k)-val([a],k)),hi=s[0],lo=s[s.length-1];
+    return `<div class="card p-3" style="border-left:4px solid ${COL[i]}"><div class="text-xs" style="color:var(--m)">${MET[k].l} (agregat)</div><div class="num text-3xl">${rows.length?fmt(k,val(rows,k)):'-'}</div><div class="text-xs mt-1" style="color:var(--m)">${hi?`Tertinggi: ${hi.n} (${fmt(k,val([hi],k))})<br>Terendah: ${lo.n} (${fmt(k,val([lo],k))})`:'Tidak ada data'}</div></div>`}).join('');
+}
+
+function charts(rows,A){
+  const dk=document.documentElement.classList.contains('dark'),gc=dk?'#2d3b38':'#e1e7e2';
+  Chart.defaults.color=dk?'#c3d0cb':'#4a5a55';Chart.defaults.font.family="'Public Sans',system-ui,sans-serif";
+  const hz=S.ct==='h',hasP=A.some(k=>MET[k].p),hasN=A.some(k=>!MET[k].p);
+  const ds=A.map((k,i)=>{const o={label:MET[k].l,data:rows.map(r=>+val([r],k).toFixed(2)),backgroundColor:COL[i],borderColor:COL[i],borderWidth:2,tension:.25};o[hz?'xAxisID':'yAxisID']=MET[k].p?'B':'A';return o});
+  const vs=(pos,t,grid,mx,show)=>({type:'linear',axis:hz?'x':'y',position:pos,beginAtZero:true,max:mx,display:show,title:{display:true,text:t},grid:{color:gc,drawOnChartArea:grid}});
+  const sc={A:vs(hz?'bottom':'left','Jumlah KDKMP',true,undefined,hasN),B:vs(hz?'top':'right','Persen (%)',!hasN,100,hasP)};
+  sc[hz?'y':'x']={grid:{display:false},ticks:{autoSkip:false,maxRotation:70}};
+  $('c1w').style.height=(hz?Math.max(380,rows.length*(14+A.length*11)):380)+'px';
+  C1&&C1.destroy();
+  C1=new Chart($('c1'),{type:S.ct==='l'?'line':'bar',data:{labels:rows.map(r=>r.n),datasets:ds},options:{indexAxis:hz?'y':'x',responsive:true,maintainAspectRatio:false,scales:sc,plugins:{legend:{position:'bottom'}}}});
+  C2&&C2.destroy();
+  C2=new Chart($('c2'),{type:'doughnut',data:{labels:['Belum RAT','Draft','Ditolak','Terverifikasi'],datasets:[{data:['b','d','r','v'].map(k=>val(rows,k)),backgroundColor:ST,borderColor:dk?'#1a2523':'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+}
+
+function cards(rows,A){
+  $('cardsWrap').style.display=A.length>2?'':'none';
+  const mx={};A.forEach(k=>mx[k]=Math.max(1,...rows.map(r=>val([r],k))));
+  $('cards').innerHTML=rows.slice(0,12).map(r=>`<div class="card p-3"><div class="font-bold text-sm mb-2">${r.n}</div>${A.map((k,i)=>{const v=val([r],k),w=MET[k].p?v:v/mx[k]*100;return `<div class="mb-2"><div class="flex justify-between text-xs gap-2"><span style="color:var(--m)">${MET[k].l}</span><b>${fmt(k,v)}</b></div><div class="h-1.5 rounded" style="background:var(--b)"><div class="h-1.5 rounded" style="width:${w}%;background:${COL[i]}"></div></div></div>`}).join('')}</div>`).join('');
+}
+
+function table(rows,A){
+  const ks=['n',...A];
+  $('th').innerHTML='<tr>'+ks.map(k=>`<th data-k="${k}" class="p-2 ${k==='n'?'text-left':'text-right'}">${k==='n'?DIML[S.dim]:MET[k].l}${S.sort===k?(S.dir>0?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
+  $('tb').innerHTML=rows.map(r=>'<tr><td class="p-2 font-medium">'+r.n+'</td>'+A.map((k,i)=>{const v=val([r],k),bar=MET[k].p?`background:linear-gradient(90deg,${COL[i]}33 ${v}%,transparent ${v}%)`:'';return `<td class="p-2 text-right" style="${bar}">${fmt(k,v)}</td>`}).join('')+'</tr>').join('')||`<tr><td class="p-3" colspan="${ks.length}">Tidak ada data yang cocok dengan filter.</td></tr>`;
+  $('tf').innerHTML='<tr class="font-bold"><td class="p-2">Total / agregat</td>'+A.map(k=>`<td class="p-2 text-right">${rows.length?fmt(k,val(rows,k)):'-'}</td>`).join('')+'</tr>';
+}
+
+function insight(rows,A){
+  lastAuto=gen(rows,A);
+  $('narr').textContent=S.custom===null?lastAuto:S.custom;
+  $('cus').classList.toggle('hidden',S.custom===null);
+  $('nv').classList.toggle('hidden',!S.notes.trim());
+  $('nv').textContent=S.notes.trim()?'Catatan: '+S.notes:'';
+  if(!$('edp').classList.contains('hidden')&&S.custom===null)$('ta').value=lastAuto;
+}
+
+function render(){
+  const A=act(),so=['n',...A];
+  $('sort').innerHTML=so.map(k=>`<option value="${k}">${k==='n'?'Nama':MET[k].l}</option>`).join('');
+  if(!so.includes(S.sort))S.sort=A[0];
+  $('sort').value=S.sort;$('dir').value=S.dir;
+  const rows=getRows();
+  const all=DATA[S.dim];
+  $('sum').textContent=`${val(all,'t')} KDKMP di ${all.length} ${DIMN[S.dim]}. Menampilkan ${rows.length} ${DIMN[S.dim]} dengan ${A.length} parameter.`;
+  kpis(rows,A);charts(rows,A);cards(rows,A);table(rows,A);insight(rows,A);
+}
+
+function buildSlots(){
+  const o=Object.keys(MET).map(k=>`<option value="${k}">${MET[k].l}</option>`).join('');
+  $('slots').innerHTML=S.p.slice(0,S.n).map((k,i)=>`<div><label class="lab" style="color:${COL[i]}">● Parameter ${i+1}</label><select class="inp sl" data-i="${i}">${o}</select></div>`).join('');
+  document.querySelectorAll('.sl').forEach(s=>{s.value=S.p[s.dataset.i];s.onchange=()=>{S.p[s.dataset.i]=s.value;render()}});
+}
+
+$('dim').onchange=e=>{S.dim=e.target.value;render()};
+$('n').onchange=e=>{S.n=+e.target.value;buildSlots();render()};
+$('sort').onchange=e=>{S.sort=e.target.value;render()};
+$('dir').onchange=e=>{S.dir=+e.target.value;render()};
+$('top').onchange=e=>{S.top=+e.target.value;render()};
+$('ct').onchange=e=>{S.ct=e.target.value;render()};
+$('q').oninput=e=>{S.q=e.target.value;render()};
+$('prob').onchange=e=>{S.prob=e.target.checked;render()};
+$('ai').onclick=()=>{S.n=4;S.p=['pv','pb','pf','ph','v','h'];S.sort='pv';S.dir=-1;$('n').value=4;buildSlots();render()};
+$('th').onclick=e=>{const t=e.target.closest('th');if(!t)return;const k=t.dataset.k;if(S.sort===k)S.dir*=-1;else{S.sort=k;S.dir=k==='n'?1:-1}render()};
+$('tgl').onclick=()=>{const p=$('edp');p.classList.toggle('hidden');if(!p.classList.contains('hidden')){$('ta').value=S.custom===null?lastAuto:S.custom;$('notes').value=S.notes}};
+$('apply').onclick=()=>{S.custom=$('ta').value;S.notes=$('notes').value;insight(getRows(),act())};
+$('rst').onclick=()=>{S.custom=null;S.notes='';$('notes').value='';$('ta').value=lastAuto;insight(getRows(),act())};
+$('theme').onclick=()=>{const d=document.documentElement.classList.toggle('dark');$('theme').textContent=d?'Mode terang':'Mode gelap';render()};
+$('prt').onclick=()=>window.print();
+$('csv').onclick=()=>{
+  const rs=getRows(),A=act(),q=s=>'"'+String(s).replace(/"/g,'""')+'"';
+  const out=[[DIML[S.dim],...A.map(k=>MET[k].l)].map(q).join(',')];
+  rs.forEach(r=>out.push([q(r.n),...A.map(k=>val([r],k).toFixed(MET[k].p?2:0))].join(',')));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+out.join('\n')],{type:'text/csv;charset=utf-8'}));
+  a.download='rat_kdkmp_lahat_'+S.dim+'.csv';document.body.appendChild(a);a.click();a.remove();
+};
+if(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark');$('theme').textContent='Mode terang'}
+buildSlots();render();
+</script>
+</body>
+</html>
